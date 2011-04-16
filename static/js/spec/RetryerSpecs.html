@@ -1,0 +1,114 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+        "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<title>Jasmine Test Runner</title>
+<link rel="stylesheet" type="text/css" href="../frameworks/lib/jasmine-1.0.2/jasmine.css">
+<script type="text/javascript" src="../frameworks/lib/jasmine-1.0.2/jasmine.js"></script>
+<script type="text/javascript" src="../frameworks/lib/jasmine-1.0.2/jasmine-html.js"></script>
+<!-- include source files here... -->
+<script type="text/javascript" src="../frameworks/lib/jasminestubextentsion.js"></script>
+<!-- include source files here... -->
+
+
+<!-- include spec files here... -->
+<script type="text/javascript">
+var jasmineext = ruzzie.jasmine.extensions;
+
+function RetryResult() {
+}
+
+RetryResult.prototype.Success = {
+    Success : false
+};
+var Retryer = {};
+
+
+Retryer.Execute = function (methodToRetry) {
+
+    var retryResult = new RetryResult();
+    try {
+        methodToRetry();
+        retryResult.Success = true;
+    }
+    catch(err) {
+        retryResult.Success = false;
+        if (retryResult.Success === false) {
+            try {
+                methodToRetry();
+                retryResult.Success = true;
+            }
+            catch(error) {
+                retryResult.Success = false;
+            }
+        }
+    }
+    return retryResult;
+};
+
+/* mock methods */
+
+function myMethodWhichSucceeds() {
+    //do nothing
+}
+
+function myMethodWhichThrowsAnException() {
+    throw "error";
+}
+
+
+describe("ShouldRetry", function() {
+
+    it("execute method once when the method does not throw an exception", function() {
+
+        var retryResult = Retryer.Execute(myMethodWhichSucceeds);
+        expect(retryResult).not.toBeNull();
+        expect(retryResult.Success).toEqual(true);
+    });
+
+    it("executes method once and returns RetryResult.Success = false when the method throws an exception", function() {
+
+        var retryResult = Retryer.Execute(myMethodWhichThrowsAnException);
+        expect(retryResult).not.toBeNull();
+        expect(retryResult.Success).toEqual(false);
+    });
+
+    xit("execute method twice, first fails, second succeeds. The RetryResult.Success should be true.", function() {
+        //first call
+        function MethodContainerStub() {
+        }
+
+        MethodContainerStub.prototype.MyStubMethod = function() {
+            //do nothing
+        };
+
+        var myContainerStub = new MethodContainerStub();
+        spyOn(myContainerStub, 'MyStubMethod').andThrow('error');
+        //second call
+        myContainerStub.MyStubMethod.andCallFake(myMethodWhichSucceeds);
+        //spyOn(myContainerStub,'MyStubMethod').andCallThrough();
+
+        //myContainerStub.MyStubMethod = jasmine.createSpy();
+        //myContainerStub.MyStubMethod.andCallFake(myMethodWhichSucceeds);
+        //myContainerStub.MyStubMethod.andCallFake(myMethodWhichSucceeds);
+
+
+        var retryResult = Retryer.Execute(myContainerStub.MyStubMethod);
+
+        expect(myContainerStub.MyStubMethod.callCount).toEqual(2);
+        expect(retryResult.Success).toEqual(true);
+    });
+});
+
+</script>
+</head>
+<body>
+
+
+<script type="text/javascript">
+    jasmine.getEnv().addReporter(new jasmine.TrivialReporter());
+    jasmine.getEnv().execute();
+</script>
+
+</body>
+</html>
